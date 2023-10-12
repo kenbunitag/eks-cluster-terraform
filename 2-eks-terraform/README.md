@@ -336,4 +336,4 @@ Here we create two nodegroups, one with private and one with public subnets.
 After that we install the EFS Driver role / policy, after that we create the efs-filesystem.
 At the end, we install the ALB-Controller including ALB-role and Policy.
 
-I can give you a step by step walkthroug if you are interested.
+I can give you a step by step walkthrough if you are interested.
