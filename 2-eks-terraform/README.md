@@ -111,9 +111,30 @@ Retrieved token for user TaliScheuner
 
 Change to the terraform-directory of this repo (./2-eks-terraform/terraform) 
 Modify the file terraform.tf so, that it matches your organization and workspace 
-and edit the file variables.tf that it matches your preferred aws-region
-and execute ``terraform init``
+and edit the file variables.tf that it matches your preferred aws-region.
 
+Install the IAM-AWS-Authenticator according to https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html
+
+Set aws-credentials as terraform cloud variables according to here: https://developer.hashicorp.com/terraform/tutorials/cloud-get-started/cloud-create-variable-set
+
+![](img/terraform-access-key.png)
+Make sure to set the Variable category for both to "Environment variable". Dont forget to press "create variable set" after you added both keys.
+![](img/terraform-access-key-2.png)
+
+Now check that you fullfill all prerequisites:
+
+- Terraform v1.3+ installed locally.
+- a Terraform Cloud account and organization.
+- Terraform Cloud locally authenticated.
+- a Terraform Cloud variable set configured with your AWS credentials.
+- an AWS account
+- the AWS CLI v2.7.0/v1.24.0 or newer, installed and configured
+- AWS IAM Authenticator
+- kubectl v1.24.0 or newer
+
+# First terraform run
+
+Execute ``terraform init`` which downloads a bunch of software and plugins.
 ```
 ~/2-eks-terraform/terraform$ terraform init
 
@@ -157,28 +178,6 @@ If you ever set or change modules or Terraform Settings, run "terraform init"
 again to reinitialize your working directory.
 
 ```
-
-Install the IAM-AWS-Authenticator according to https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html
-
-Set aws-credentials as terraform cloud variables according to here: https://developer.hashicorp.com/terraform/tutorials/cloud-get-started/cloud-create-variable-set
-
-![](img/terraform-access-key.png)
-Make sure to set the Variable category for both to "Environment variable". Dont forget to press "create variable set" after you added both keys.
-![](img/terraform-access-key-2.png)
-
-Now check that you fullfill all prerequisites:
-
-- Terraform v1.3+ installed locally.
-- a Terraform Cloud account and organization.
-- Terraform Cloud locally authenticated.
-- a Terraform Cloud variable set configured with your AWS credentials.
-- an AWS account
-- the AWS CLI v2.7.0/v1.24.0 or newer, installed and configured
-- AWS IAM Authenticator
-- kubectl v1.24.0 or newer
-
-# First terraform run
-
 Now execute `terraform apply` and after some time a complete eks-cluster is available.
 
 If everything works correctly, you will see this prompt where you can enter "yes":
