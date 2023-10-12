@@ -1,9 +1,3 @@
-# Table of Contents
-1. [Introduction](#Introduction)
-2. [Preparations](#Preparations)
-3. [VPC](#VPC)
-4. [Fourth Example](#fourth-examplehttpwwwfourthexamplecom)
-
 # Introduction
 In this session we will create an EKS-kubernetes cluster on Amazon AWS with the following features:
 - Multiple Zones in a AWS-Region with public and private subnets 
