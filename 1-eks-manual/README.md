@@ -484,6 +484,6 @@ $ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
 - https
 - argocd
 - elk-installation
-- elk-anbindung
+- elk-integration
 - grafana
-- grafana-anbindung
+- grafana-integration
