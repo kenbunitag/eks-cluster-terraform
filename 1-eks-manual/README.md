@@ -13,7 +13,7 @@ In this session we will create an EKS-kubernetes cluster on Amazon AWS with the 
 We will first create the cluster in the traditional way with the AWS Web Console and via aws-cli and eksctl. In the second session
 we will use terrarform to create almost the same cluster and compare both approaches.  
 
-#2 Preparations
+# 2 Preparations
 Install and configure the following:
 - aws-cli, see https://docs.aws.amazon.com/cli/latest/userguide/getting-started-install.html
 - eksctl, see https://eksctl.io/installation/
@@ -25,7 +25,7 @@ Please also make sure that you have the correct region you want to work with sel
 
 ![Select Region](./img/select-region.png)
 
-#3 VPC
+# 3 VPC
 First we need to create a VPC that is than used by the EKS-Cluster that we will create. In Amazon terms, a VPC is a Virtual Network, not unlike a traditional physical Network. Especially for us, a VPC acts as a container for Subnets, Routing Tables and Security-Groups.
 
 You can check the official documentation for creating a vpc here: https://docs.aws.amazon.com/eks/latest/userguide/creating-a-vpc.html
@@ -51,7 +51,7 @@ If not, use the menupoint "Edit subnet settings" under "Actions" to to check the
 
 ![Create VPC-3](./img/create-vpc-3.png)
 
-#4 EKS-Cluster
+# 4 EKS-Cluster
 
 Now we will continue with creating the eks cluster. Head over to the EKS section of the aws console and view the cluster list.
 
