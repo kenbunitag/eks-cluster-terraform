@@ -134,7 +134,7 @@ Now check that you fullfill all prerequisites:
 
 # First terraform run
 
-Execute ``terraform init`` which downloads a bunch of software and plugins.
+Execute ``terraform init`` in the terraform-directory which downloads a bunch of software and plugins.
 ```
 ~/2-eks-terraform/terraform$ terraform init
 
@@ -178,7 +178,7 @@ If you ever set or change modules or Terraform Settings, run "terraform init"
 again to reinitialize your working directory.
 
 ```
-Now execute `terraform apply` and after some time a complete eks-cluster is available.
+Now execute `terraform apply` in the terraform-directory and after some time a complete eks-cluster is available.
 
 If everything works correctly, you will see this prompt where you can enter "yes":
 
