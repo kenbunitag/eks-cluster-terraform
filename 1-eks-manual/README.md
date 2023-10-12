@@ -90,9 +90,19 @@ Here we can select the exact versions of the add-ons to install. I usually selec
 Review your settings for the cluster and press the Create-Button.
 
 ### Update kube-config
+
+To configure the new cluster to work with kubectl execute the following command:
+```
 aws eks update-kubeconfig --region region-code --name my-cluster
 kubectl get svc
 kubectl get nodes
+```
+There should be no nodes in the cluster yet, but kubectl get svc should print the following:
+```
+$ kubectl get svc
+NAME         TYPE        CLUSTER-IP   EXTERNAL-IP   PORT(S)   AGE
+kubernetes   ClusterIP   172.20.0.1   <none>        443/TCP   4h53m
+```
 
 ### Add Node-Groups
 Before we add Nodes to our cluster we need to have a node role. Check the following link on how to create one:
@@ -122,8 +132,7 @@ For this nodegroup select the public subnets, so that they have internet access.
 Review your settings and press Create.
 
 
-
-#5 EFS - IAM
+# 5 EFS - IAM
 
 First we have to create an IAM Role and attach a policy to it.
 
@@ -226,7 +235,7 @@ Now Review your settings and press "Create"
 
 ![](img/configure-efs-5.png)
 
-#6 EFS
+# 6 EFS
 
 Now we are ready to create a filesystem: navigate to efs:
 ![](img/create-efs-1.png)
@@ -290,7 +299,7 @@ efs-sc          efs.csi.aws.com         Delete          Immediate              f
 gp2 (default)   kubernetes.io/aws-ebs   Delete          WaitForFirstConsumer   false                  3h49m
 ```
 
-#7 EFS - Test
+# 7 EFS - Test
 Now it is time to test the efs access with own pods and pvcs.
 
 Store this pvc and pod definition in a file efs-pod.yaml
@@ -359,7 +368,7 @@ Thu Oct 12 01:37:39 UTC 2023
 Even if you delete the pod and recreate it, the data will stay as long as you not delete the pvc.
 
 
-#8 ALB - IAM
+# 8 ALB - IAM
 The AWS Load Balancer Controller provides both Ingress and a LoadBalancer type service. We need it to make services or websites visible to the internet.
 
 To install it we use the guide at:
@@ -427,7 +436,7 @@ aws iam attach-role-policy \
 ```
 Please note that i append the cluster-name before policy and role-name.
 
-#9 ALB - Controller
+# 9 ALB - Controller
 Now we need to create the kubernetes service account for the alb-controller before we install it.
 
 Create the file aws-load-balancer-controller-service-account.yaml:
@@ -469,9 +478,9 @@ $ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
 ```
 
 
-#10 ALB - Test
+# 10 ALB - Test
 
-#11 Whats missing
+# 11 Whats missing
 - https
 - argocd
 - elk-installation
