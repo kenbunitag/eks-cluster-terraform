@@ -206,6 +206,7 @@ After a while the cluster should be up and running.
 
 # The main.tf file
 You can easily compare the steps we configured in the manually session (eks-manual)
+Here are some excerpts:
 
 For example at the beginning:
 
