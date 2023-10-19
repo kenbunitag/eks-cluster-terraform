@@ -1,0 +1,44 @@
+apiVersion: elasticsearch.k8s.elastic.co/v1
+kind: Elasticsearch
+metadata:
+  name: elasticsearch
+  namespace: elastic-instance
+spec:
+  version: 8.7.0
+  nodeSets:
+    - name: default
+      count: 3
+      volumeClaimTemplates: #We need to reinitialize cluster for this
+        - metadata:
+            name: elasticsearch-data # Do not change this name unless you set up a volume mount for the data path.
+          spec:
+            accessModes:
+              - ReadWriteOnce
+            resources:
+              requests:
+                storage: 10Gi
+            storageClassName: efs-sc
+      config:
+        node.store.allow_mmap: false # should be true in production, see https://www.elastic.co/guide/en/cloud-on-k8s/master/k8s-virtual-memory.html
+      podTemplate:
+        metadata:
+          labels:
+            scrape: es
+        spec:
+          containers:
+            - name: elasticsearch
+              resources:
+                requests:
+                  memory: 1Gi
+                  cpu: 1
+                limits:
+                  memory: 1Gi
+          affinity:
+            podAntiAffinity:
+              preferredDuringSchedulingIgnoredDuringExecution:
+                - weight: 100
+                  podAffinityTerm:
+                    labelSelector:
+                      matchLabels:
+                        elasticsearch.k8s.elastic.co/cluster-name: elasticsearch
+                    topologyKey: kubernetes.io/hostname

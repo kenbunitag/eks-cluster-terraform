@@ -10,127 +10,90 @@ For directions use this manual: https://developer.hashicorp.com/terraform/tutori
 We use the CLI-Driven workflow for this introduction.
 
 # 2 Preparations
-Make a terraform cloud account.
-
-![](img/terraform-account.png)
-
-After using the confirmation link from the registration email, create a new organization.
-
-![](img/terraform-organization-1.png)
-
-![](img/terraform-organization-2.png)
-
-After that create a new workspace.
-![](img/terraform-workspace.png)
-Use the CLI-Driven Workflow.
-
-![](img/terraform-workspace-2.png)
-
-![](img/terraform-workspace-3.png)
-
 Install the terraform-cli according to https://developer.hashicorp.com/terraform/tutorials/aws-get-started/install-cli
 
-Login to terraform from the cli like here: https://developer.hashicorp.com/terraform/tutorials/cloud-get-started/cloud-login
-
-```
-$ terraform login
-Terraform will request an API token for app.terraform.io using your browser.
-
-If login is successful, Terraform will store the token in plain text in
-the following file for use by subsequent commands:
-    /home/michael/.terraform.d/credentials.tfrc.json
-
-Do you want to proceed?
-  Only 'yes' will be accepted to confirm.
-
-  Enter a value: yes
-
-
----------------------------------------------------------------------------------
-
-Terraform must now open a web browser to the tokens page for app.terraform.io.
-
-If a browser does not open this automatically, open the following URL to proceed:
-    https://app.terraform.io/app/settings/tokens?source=terraform-login
-
-
----------------------------------------------------------------------------------
-
-Generate a token using your browser, and copy-paste it into this prompt.
-
-Terraform will store the token in plain text in the following file
-for use by subsequent commands:
-    /home/michael/.terraform.d/credentials.tfrc.json
-
-Token for app.terraform.io:
-  Enter a value: Opening in existing browser session.
-
-```
-The browser now opens:
-
-![](img/terraform-login.png)
-
-Generate the token and paste it into your console:
-
-```
-
-
-
-
-Retrieved token for user TaliScheuner
-
-
----------------------------------------------------------------------------------
-
-                                          -                                
-                                          -----                           -
-                                          ---------                      --
-                                          ---------  -                -----
-                                           ---------  ------        -------
-                                             -------  ---------  ----------
-                                                ----  ---------- ----------
-                                                  --  ---------- ----------
-   Welcome to Terraform Cloud!                     -  ---------- -------
-                                                      ---  ----- ---
-   Documentation: terraform.io/docs/cloud             --------   -
-                                                      ----------
-                                                      ----------
-                                                       ---------
-                                                           -----
-                                                               -
-
-
-   New to TFC? Follow these steps to instantly apply an example configuration:
-
-   $ git clone https://github.com/hashicorp/tfc-getting-started.git
-   $ cd tfc-getting-started
-   $ scripts/setup.sh
-
-```
-
-
 Change to the terraform-directory of this repo (./2-eks-terraform/terraform) 
-Modify the file terraform.tf so, that it matches your organization and workspace 
-and edit the file variables.tf that it matches your preferred aws-region.
+Modify the file variables.tf so, that it matches your aws region and your preferred subdomain. 
 
 Install the IAM-AWS-Authenticator according to https://docs.aws.amazon.com/eks/latest/userguide/install-aws-iam-authenticator.html
-
-Set aws-credentials as terraform cloud variables according to here: https://developer.hashicorp.com/terraform/tutorials/cloud-get-started/cloud-create-variable-set
-
-![](img/terraform-access-key.png)
-Make sure to set the Variable category for both to "Environment variable". Dont forget to press "create variable set" after you added both keys.
-![](img/terraform-access-key-2.png)
 
 Now check that you fullfill all prerequisites:
 
 - Terraform v1.3+ installed locally.
-- a Terraform Cloud account and organization.
-- Terraform Cloud locally authenticated.
-- a Terraform Cloud variable set configured with your AWS credentials.
 - an AWS account
 - the AWS CLI v2.7.0/v1.24.0 or newer, installed and configured
 - AWS IAM Authenticator
 - kubectl v1.24.0 or newer
+
+# Prepare a DNS-Zone in Route 53
+We want to use nice DNS Names for our services. For that we prepare an empty zone in Route 53. Go to route-53 and press 
+"Create hosted zone"
+
+![Create Zone](./img/terraform-route53-1.png)
+
+This zone will be empty for now, it will later be filled by kubernetes-ingresses and by terraform with information about
+the needed TLS-certificate.
+
+![Create Zone](./img/terraform-route-53-2.png)
+
+Amazon will automatically create a NS-Record for your subdomain in this zone:
+
+![Create Zone](./img/terraform-route-53-3.png)
+
+You have to connect this to the configuration of your main-domain. For example:
+
+- Our main domain is "kenbun.de"
+- We want to use "xxxx.eks.kenbun.de" as Domain-Names for the applications in the eks-cluster with the help of amazons route-53-zone we just created.
+- To delegate this subdomain to route53 we create NS-Records with the aws-nameservers for the subdomain in your "normal" DNS - whereever that may be. Could be also route53 or a complete different provider. Example of our zonefile for "kenbun.de":
+```
+$ORIGIN kenbun.de.
+$TTL 86400
+; SOA Records
+@		IN	SOA	hydrogen.ns.hetzner.com. dns.hetzner.com. 2023101700 86400 10800 3600000 3600
+; NS Records
+@		IN	NS	helium.ns.hetzner.de.
+@		IN	NS	hydrogen.ns.hetzner.com.
+@		IN	NS	oxygen.ns.hetzner.com.
+eks		IN	NS	ns-1074.awsdns-06.org.
+eks		IN	NS	ns-1847.awsdns-38.co.uk.
+eks		IN	NS	ns-26.awsdns-03.com.
+eks		IN	NS	ns-792.awsdns-35.net.
+....
+```
+
+Here i added 4 NS-Records with the aws-name-servers for "eks" to the zonefile. So, every domain that ends with "eks.kenbun.de" will be resolved with the aws-nameservers.
+This rather complex procedure is the reason why i can not leave the creation of the DNS-Zone to terraform.
+
+A test with the dig-command looks like this:
+```
+~ dig NS eks.kenbun.de
+
+; <<>> DiG 9.16.1-Ubuntu <<>> NS eks.kenbun.de
+;; global options: +cmd
+;; Got answer:
+;; ->>HEADER<<- opcode: QUERY, status: NOERROR, id: 55546
+;; flags: qr rd ra; QUERY: 1, ANSWER: 4, AUTHORITY: 0, ADDITIONAL: 1
+
+;; OPT PSEUDOSECTION:
+; EDNS: version: 0, flags:; udp: 65494
+;; QUESTION SECTION:
+;eks.kenbun.de.			IN	NS
+
+;; ANSWER SECTION:
+eks.kenbun.de.		39312	IN	NS	ns-1074.awsdns-06.org.
+eks.kenbun.de.		39312	IN	NS	ns-1847.awsdns-38.co.uk.
+eks.kenbun.de.		39312	IN	NS	ns-792.awsdns-35.net.
+eks.kenbun.de.		39312	IN	NS	ns-26.awsdns-03.com.
+
+;; Query time: 36 msec
+;; SERVER: 127.0.0.53#53(127.0.0.53)
+;; WHEN: Do Okt 19 05:17:38 CEST 2023
+;; MSG SIZE  rcvd: 181
+```
+
+When you see a similar result then the delegation of the subdomain to AWS-Route 53 succeeded. A TLS-Certificate will be created by terraform, more Hostnames will later be added by kubernetes as more ingresses will be added.
+
+You also need to configure your subdomain in the file variables.tf and in the file argocd-values.yaml - there argocd will be configured with the host-name "argocd.sub.domain.xx" - search for "eks.kenbun.de", there are 2 places that need to be changed.
 
 # First terraform run
 
@@ -178,6 +141,12 @@ If you ever set or change modules or Terraform Settings, run "terraform init"
 again to reinitialize your working directory.
 
 ```
+
+Make sure that you have the following two environment variables defined:
+
+- export AWS_ACCESS_KEY_ID = XXXXXXXXXX
+- export AWS_SECRET_ACCESS_KEY = YYYYYYYYY
+
 Now execute `terraform apply` in the terraform-directory and after some time a complete eks-cluster is available.
 
 If everything works correctly, you will see this prompt where you can enter "yes":
@@ -218,6 +187,8 @@ Do you want to perform these actions in workspace "My-Workspace"?
 
 ```
 
+
+
 You can switch kubectl-config to the new cluster with:
 ```
 aws eks --region $(terraform output -raw region) update-kubeconfig \
@@ -228,7 +199,7 @@ After a while the cluster should be up and running.
 
 # The terraform files
 
-- terraform.tf global settings like organization and workspace. Also needed software versions.
+- terraform.tf Needed software versions - you normally don't need to touch this.
 - variables.tf: settings like the aws-region
 - outputs.tf: fields that will by outputted after every terraform apply. Yout can also access the values of the fields with the command ``terraform output -raw variablename``
 - main.tf the main script that creates the cluster
@@ -334,6 +305,16 @@ module "eks" {
 Here we create two nodegroups, one with private and one with public subnets.
 
 After that we install the EFS Driver role / policy, after that we create the efs-filesystem.
-At the end, we install the ALB-Controller including ALB-role and Policy.
+Then we install the ALB-Controller including ALB-role and Policy.
+Then we configure the Route 53-DNS-Zone for domain names and tls-certificates.
+At the end we install argocd via helm-chart.
 
-I can give you a step by step walkthrough if you are interested.
+Beware: the first terraform apply may not succeed and fail with the installation of argocd. This will probably be because the AWS-Loadbalancer is not fully initialized. This is easy resolved with a second "terraform apply" after a couple of seconds. 
+
+After some minutes you should be able to access argocd with the configured url (and the subdomain you specified), eg: https://argocd.sub.domain.xx
+
+After a "terraform apply" - run a file "terraform.tfstate" will be created (or changed). This is the base for terraform to calculate diffs between the terraform config (mainly main.tf) and the last state of the aws-cluster. Subsequent runs of "terraform apply" will only create or change resources that have been changed since the last run.
+
+You could add this file to a git-repo along with the config. It ist alternatively possible to upload this to a S3-Bucket or Azure-Bucket. 
+
+I can give you a step by step walkthrough throug the process and technique if you are interested.

@@ -1,0 +1,22 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: echoserver
+  namespace: argocd
+spec:
+  project: sample-projects
+  source:
+    path: sample-projects/echoserver
+    repoURL: 'git@github.com:kenbunitag/placid-eks-argocd-test.git'
+    targetRevision: main
+    # helm:
+    #   valueFiles:
+    #     - values.yaml
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: sample-projects
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true

@@ -1,0 +1,34 @@
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: sample-projects
+  namespace: argocd
+spec:
+  # Project description
+  description: Some Example-Projects
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  destinations:
+    - namespace: '*'
+      server: '*'
+  sourceRepos:
+    - 'git@github.com:kenbunitag/placid-eks-argocd-test.git'
+---
+apiVersion: argoproj.io/v1alpha1
+kind: AppProject
+metadata:
+  name: elastic
+  namespace: argocd
+spec:
+  # Project description
+  description: Elastic-Installation-Projects
+  clusterResourceWhitelist:
+    - group: '*'
+      kind: '*'
+  destinations:
+    - namespace: '*'
+      server: '*'
+  sourceRepos:
+    - 'git@github.com:kenbunitag/placid-eks-argocd-test.git'
+

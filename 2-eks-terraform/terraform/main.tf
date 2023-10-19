@@ -18,7 +18,8 @@ data "aws_availability_zones" "available" {
 }
 
 locals {
-  cluster_name = "education-eks-${random_string.suffix.result}"
+  cluster_name = "${var.clustername}"
+  # cluster_name = "education-eks-${random_string.suffix.result}"
   azs = slice(data.aws_availability_zones.available.names, 0, 3)
   account_id = data.aws_caller_identity.current.account_id
 }
@@ -32,7 +33,7 @@ module "vpc" {
   source = "terraform-aws-modules/vpc/aws"
   version = "5.0.0"
 
-  name = "education-vpc"
+  name = "${var.clustername}-vpc"
 
   cidr = "10.0.0.0/16"
   azs = slice(data.aws_availability_zones.available.names, 0, 3)
@@ -84,11 +85,11 @@ module "eks" {
       subnet_ids = module.vpc.private_subnets
 
       instance_types = [
-        "t3.small"]
+        "t3.large"]
 
-      min_size = 1
-      max_size = 3
-      desired_size = 2
+      min_size = 3
+      max_size = 6
+      desired_size = 5
     }
 
     two = {
@@ -100,6 +101,17 @@ module "eks" {
       min_size = 1
       max_size = 2
       desired_size = 1
+    }
+
+    three = {
+      name = "node-group-3"
+      subnet_ids = module.vpc.public_subnets
+      instance_types = [
+        "t3.medium"]
+
+      min_size = 2
+      max_size = 4
+      desired_size = 3
     }
   }
 
@@ -119,9 +131,9 @@ module "eks" {
 # EFS Driver role / policy
 ##############
 
-data "aws_eks_cluster" "clusterinfo" {
-  name = "${module.eks.cluster_name}"
-}
+#data "aws_eks_cluster" "clusterinfo" {
+#  name = "${module.eks.cluster_name}"
+#}
 
 resource "aws_iam_policy" "EKS_EFS_CSI_Driver_Policy" {
   name = "EKS_EFS_CSI_Driver_Policy-${module.eks.cluster_name}"
@@ -180,7 +192,8 @@ resource "aws_iam_policy" "EKS_EFS_CSI_Driver_Policy" {
 }
 
 locals {
-  oidc_id = "${substr(data.aws_eks_cluster.clusterinfo.identity.0.oidc.0.issuer, -32, -1)}"
+  #oidc_id = "${substr(data.aws_eks_cluster.clusterinfo.identity.0.oidc.0.issuer, -32, -1)}"
+  oidc_id = "${substr(module.eks.cluster_oidc_issuer_url, -32, -1)}"
 }
 
 resource "aws_iam_role" "EKS_EFS_CSI_DriverRole" {
@@ -194,7 +207,7 @@ resource "aws_iam_role" "EKS_EFS_CSI_DriverRole" {
       {
         "Effect": "Allow",
         "Principal": {
-          "Federated": "arn:aws:iam::${local.account_id}:oidc-provider/oidc.eks.eu-central-1.amazonaws.com/id/${local.oidc_id}"
+          "Federated": "arn:aws:iam::${local.account_id}:oidc-provider/oidc.eks.${var.region}.amazonaws.com/id/${local.oidc_id}"
         },
         "Action": "sts:AssumeRoleWithWebIdentity",
         "Condition": {
@@ -273,6 +286,36 @@ module "efs" {
   #}
 
   //tags = local.tags
+}
+
+######
+# We need provider "kubernetes" so that we can create/modify kubernetes resource,
+# here: for the kubernetes-service-account and helm-integration in the next steps
+######
+provider "kubernetes" {
+  host                   = module.eks.cluster_endpoint
+  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
+  exec {
+    api_version = "client.authentication.k8s.io/v1"
+    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
+    command     = "aws"
+  }
+}
+
+
+resource "kubernetes_storage_class" "efs-sc" {
+  metadata {
+    name = "efs-sc"
+  }
+  storage_provisioner = "efs.csi.aws.com"
+  reclaim_policy      = "Delete" # or Retain
+  parameters = {
+    provisioningMode: "efs-ap"
+    fileSystemId: module.efs.id
+    directoryPerms: "700"
+    gidRangeStart: "1000"
+    gidRangeEnd: "2000"
+  }
 }
 
 ################################################################################
@@ -560,21 +603,8 @@ resource "aws_iam_role_policy_attachment" "attach-alb-role" {
   policy_arn = aws_iam_policy.AWSLoadBalancerControllerIAMPolicy.arn
 }
 
-######
-# We need provider "kubernetes" so that we can create/modify kubernetes resource,
-# here: for the kubernetes-service-account and helm-integration in the next steps
-######
-provider "kubernetes" {
-  host                   = module.eks.cluster_endpoint
-  cluster_ca_certificate = base64decode(module.eks.cluster_certificate_authority_data)
-  exec {
-    api_version = "client.authentication.k8s.io/v1"
-    args        = ["eks", "get-token", "--cluster-name", module.eks.cluster_name]
-    command     = "aws"
-  }
-}
 
-resource "kubernetes_service_account" "service-account" {
+resource "kubernetes_service_account" "aws-load-balancer-service-account" {
   metadata {
     name = "aws-load-balancer-controller"
     namespace = "kube-system"
@@ -612,7 +642,7 @@ resource "helm_release" "lb" {
   chart      = "aws-load-balancer-controller"
   namespace  = "kube-system"
   depends_on = [
-    kubernetes_service_account.service-account
+    kubernetes_service_account.aws-load-balancer-service-account
   ]
 
   set {
@@ -629,9 +659,9 @@ resource "helm_release" "lb" {
     name  = "image.repository"
     /**
     Use the correct url here for your region, lookup at: https://docs.aws.amazon.com/eks/latest/userguide/add-ons-images.html
-    The following is the correct one for eu-central-1
+    change in variables.tf
     **/
-    value = "602401143452.dkr.ecr.eu-central-1.amazonaws.com/amazon/aws-load-balancer-controller"
+    value = "${var.amazoncontainerimageregistry}/amazon/aws-load-balancer-controller"
 
   }
 
@@ -649,4 +679,229 @@ resource "helm_release" "lb" {
     name  = "clusterName"
     value = module.eks.cluster_name
   }
+}
+
+########
+## Route 53 and external-dns controller
+########
+resource "aws_iam_policy" "AWSExternalDNSControllerIAMPolicy" {
+
+  name = "AWSExternalDNSIAMPolicy-${module.eks.cluster_name}"
+  path = "/"
+  description = "ALB Controller policy"
+
+  policy = jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Action": [
+          "route53:ChangeResourceRecordSets"
+        ],
+        "Resource": [
+          "arn:aws:route53:::hostedzone/*"
+        ]
+      },
+      {
+        "Effect": "Allow",
+        "Action": [
+          "route53:ListHostedZones",
+          "route53:ListResourceRecordSets",
+          "route53:ListTagsForResource"
+        ],
+        "Resource": [
+          "*"
+        ]
+      }
+    ]
+  })
+
+}
+
+
+resource "aws_iam_role" "AmazonExternalDNSControllerRole" {
+  name = "AmazonExternalDNSControllerRole-${module.eks.cluster_name}"
+
+  # Terraform's "jsonencode" function converts a
+  # Terraform expression result to valid JSON syntax.
+  assume_role_policy = jsonencode({
+    "Version": "2012-10-17",
+    "Statement": [
+      {
+        "Effect": "Allow",
+        "Principal": {
+          "Federated": "arn:aws:iam::${local.account_id}:oidc-provider/oidc.eks.${var.region}.amazonaws.com/id/${local.oidc_id}"
+        },
+        "Action": "sts:AssumeRoleWithWebIdentity",
+        "Condition": {
+          "StringEquals": {
+            "oidc.eks.${var.region}.amazonaws.com/id/${local.oidc_id}:sub": "system:serviceaccount:kube-system:external-dns",
+            "oidc.eks.${var.region}.amazonaws.com/id/${local.oidc_id}:aud": "sts.amazonaws.com"
+          }
+        }
+      }
+    ]
+  })
+}
+
+resource "aws_iam_role_policy_attachment" "attach-dns-role" {
+  role = aws_iam_role.AmazonExternalDNSControllerRole.name
+  policy_arn = aws_iam_policy.AWSExternalDNSControllerIAMPolicy.arn
+}
+
+resource "kubernetes_service_account" "external-dns" {
+  metadata {
+    name = "external-dns"
+    namespace = "kube-system"
+    labels = {
+      "app.kubernetes.io/name" = "external-dns"
+    }
+    annotations = {
+      "eks.amazonaws.com/role-arn" = aws_iam_role.AmazonExternalDNSControllerRole.arn
+    }
+  }
+}
+
+resource "kubernetes_cluster_role" "external-dns" {
+  metadata {
+    name = "external-dns"
+    labels = {
+      "app.kubernetes.io/name": "external-dns"
+    }
+#    namespace = "kube-system"
+  }
+
+  rule {
+    api_groups = [""]
+    resources  = ["services","endpoints","pods","nodes"]
+    verbs      = ["get", "list", "watch"]
+  }
+  rule {
+    api_groups = ["extensions","networking.k8s.io"]
+    resources  = ["ingresses"]
+    verbs      = ["get", "list", "watch"]
+  }
+
+}
+
+resource "kubernetes_cluster_role_binding" "example" {
+  metadata {
+    name = "external-dns-viewer"
+#    namespace = "kube-system"
+    labels = {
+      "app.kubernetes.io/name": "external-dns"
+    }
+  }
+  role_ref {
+    api_group = "rbac.authorization.k8s.io"
+    kind      = "ClusterRole"
+    name      = "external-dns"
+  }
+  subject {
+    kind      = "ServiceAccount"
+    name      = "external-dns"
+    namespace = "kube-system"
+  }
+}
+
+### This zone should be manually created beforehand
+data "aws_route53_zone" "clusterdomain" {
+  name = "${var.clusterdomain}"
+  private_zone = false
+}
+
+  resource "kubernetes_deployment" "external-dns" {
+  metadata {
+    name      = "external-dns"
+    namespace = "kube-system"
+    labels = {
+      "app.kubernetes.io/name": "external-dns"
+    }
+  }
+  spec {
+    strategy {
+      type = "Recreate"
+    }
+    selector {
+      match_labels = {
+        "app.kubernetes.io/name" = "external-dns"
+      }
+    }
+    template {
+      metadata {
+        labels = {
+          "app.kubernetes.io/name" = "external-dns"
+        }
+      }
+      spec {
+        service_account_name = "external-dns"
+        container {
+          image = "registry.k8s.io/external-dns/external-dns:v0.13.5"
+          name  = "external-dns"
+          args = [
+            "--source=service",
+            "--source=ingress",
+            "--domain-filter=${var.clusterdomain}", # will make ExternalDNS see only the hosted zones matching provided domain, omit to process all available hosted zones
+            "--provider=aws",
+#            "--policy=upsert-only", # would prevent ExternalDNS from deleting any records, omit to enable full synchronization
+            "--aws-zone-type=public", # only look at public hosted zones (valid values are public, private or no value for both)
+            "--registry=txt",
+            "--txt-owner-id=/hostedzone/${data.aws_route53_zone.clusterdomain.zone_id}"
+          ]
+
+          env {
+            name = "AWS_DEFAULT_REGION"
+            value = "${var.region}"
+          }
+        }
+      }
+    }
+  }
+}
+
+
+###########
+# Domain and TLS certificates
+###########
+resource "aws_acm_certificate" "ekskenbunde" {
+  domain_name       = "*.${var.clusterdomain}"
+  validation_method = "DNS"
+}
+
+resource "aws_route53_record" "clusterdomain" {
+  for_each = {
+    for dvo in aws_acm_certificate.ekskenbunde.domain_validation_options : dvo.domain_name => {
+      name   = dvo.resource_record_name
+      record = dvo.resource_record_value
+      type   = dvo.resource_record_type
+    }
+  }
+
+  allow_overwrite = true
+  name            = each.value.name
+  records         = [each.value.record]
+  ttl             = 60
+  type            = each.value.type
+  zone_id         = data.aws_route53_zone.clusterdomain.zone_id
+}
+
+resource "aws_acm_certificate_validation" "clusterdomain" {
+  certificate_arn         = aws_acm_certificate.ekskenbunde.arn
+  validation_record_fqdns = [for record in aws_route53_record.clusterdomain : record.fqdn]
+}
+
+
+
+#######
+# We could install argocd via helmchart at this point, but the loadbalancer is probably not ready.
+# Doing this outside of terraform for now
+#######
+resource "helm_release" "argocd" {
+  name             = "argocd"
+  repository       = "https://argoproj.github.io/argo-helm"
+  chart            = "argo-cd"
+  namespace        = "argocd"
+  create_namespace = true
+  version          = "5.46.8"
+  values           = [file("argocd-values.yaml")]
 }

@@ -22,14 +22,6 @@ output "cluster_name" {
 }
 
 # Only available on Kubernetes version 1.13 and 1.14 clusters created or upgraded on or after September 3, 2019.
-output "identity-oidc-issuer" {
-  value = "${data.aws_eks_cluster.clusterinfo.identity.0.oidc.0.issuer}"
-}
-
-output "identity-oidc-id" {
-  value = "${substr(data.aws_eks_cluster.clusterinfo.identity.0.oidc.0.issuer, -32, -1)}"
-}
-
 output "identity-oidc" {
-  value = "${data.aws_eks_cluster.clusterinfo.identity.0.oidc}"
+  value = "${substr(module.eks.cluster_oidc_issuer_url, -32, -1)}"
 }

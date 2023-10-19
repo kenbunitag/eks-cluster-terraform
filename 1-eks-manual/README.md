@@ -480,6 +480,12 @@ $ helm install aws-load-balancer-controller eks/aws-load-balancer-controller \
 
 # 10 ALB - Test
 
+# 11 ALB with external DNS
+
+https://github.com/kubernetes-sigs/external-dns/blob/master/docs/tutorials/aws.md#iam-permissions
+
+https://kubernetes-sigs.github.io/aws-load-balancer-controller/v2.1/guide/integrations/external_dns/
+
 # 11 Whats missing
 - https
 - argocd

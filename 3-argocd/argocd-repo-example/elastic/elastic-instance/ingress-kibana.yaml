@@ -1,0 +1,24 @@
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: kibana
+  namespace: elastic-instance
+  annotations:
+    alb.ingress.kubernetes.io/scheme: internet-facing
+    alb.ingress.kubernetes.io/listen-ports: '[{"HTTPS":443}]'
+spec:
+  ingressClassName: alb
+  tls:
+    - hosts:
+        - kibana.eks.kenbun.de
+  rules:
+    - host: kibana.eks.kenbun.de
+      http:
+        paths:
+          - path: /
+            backend:
+              service:
+                name: kibana-kb-http
+                port:
+                  number: 5601
+            pathType: Prefix

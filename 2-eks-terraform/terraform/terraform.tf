@@ -3,12 +3,6 @@
 
 terraform {
 
-  cloud {
-    organization = "TalisOrganization"
-    workspaces {
-      name = "My-Workspace"
-    }
-  }
 
   required_providers {
     aws = {

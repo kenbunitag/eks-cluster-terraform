@@ -1,0 +1,46 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: sample-projects
+  namespace: argocd
+spec:
+  destination:
+    name: ''
+    namespace: sample-projects
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: sample-projects
+    repoURL: 'git@github.com:kenbunitag/placid-eks-argocd-test.git'
+    targetRevision: main
+  project: sample-projects
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+---
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elastic
+  namespace: argocd
+spec:
+  destination:
+    name: ''
+    namespace: elastic-instance
+    server: 'https://kubernetes.default.svc'
+  source:
+    path: elastic
+    repoURL: 'git@github.com:kenbunitag/placid-eks-argocd-test.git'
+    targetRevision: main
+  project: elastic
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
+---

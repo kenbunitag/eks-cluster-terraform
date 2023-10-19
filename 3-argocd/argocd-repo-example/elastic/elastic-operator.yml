@@ -1,0 +1,23 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elastic-operator
+  namespace: argocd
+spec:
+  project: elastic
+  source:
+    path: elastic/elastic-system
+    repoURL: 'git@github.com:kenbunitag/placid-eks-argocd-test.git'
+    targetRevision: main
+    helm:
+      valueFiles:
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: elastic-system
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true

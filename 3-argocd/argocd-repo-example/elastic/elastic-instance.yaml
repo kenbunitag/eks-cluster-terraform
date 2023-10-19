@@ -1,0 +1,24 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: elastic-instance
+  namespace: argocd
+spec:
+  project: elastic
+  source:
+    path: elastic/elastic-instance
+    repoURL: 'git@github.com:kenbunitag/placid-eks-argocd-test.git'
+    targetRevision: main
+    # helm:
+    #   valueFiles:
+    #     - values.yaml
+  destination:
+    server: "https://kubernetes.default.svc"
+    namespace: elastic-instance
+  syncPolicy:
+    syncOptions:
+      - CreateNamespace=true
+    automated:
+      prune: true
+      selfHeal: true
+      allowEmpty: true
