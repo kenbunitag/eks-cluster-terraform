@@ -98,3 +98,12 @@ Feel free to explore the examples, for example the elastic-cluster:
 Or with the node-view:
 
 ![](img/argocd-elastic-nodes.png)
+
+In the example-directory are the following applications:
+- echoserver: echos the http-request back, for checking ingress with tls and dns-configuration.
+- efs-test: a container that uses a pvc for accessing the efs-file-system
+- guestbook: an example that uses a different git-ops-repository
+- elastic-operator: the elasticsearch-kubernetes-operator
+- elastic-instance: an instance of a elasticsearch-server, uses efs for persistance
+- argocd, elastic, sample-projects: Argocd projects that keep different applications together.  
+- 
